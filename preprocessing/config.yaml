@@ -1,0 +1,30 @@
+# Configuration file for BMD GWAS analysis workflow
+
+# Input files
+input_gwas: "/mnt/10T-backup-mingju/ifar/EP_modeling/UW_BMD/BMD_GWAS_input.tsv"
+
+# Hi-C data
+hic_folder: "/mnt/10T-backup-mingju/ifar/Hi-C/OB/3k"
+hic_prefix: "OB13.bam.pre.filter.q30.3k.hic.KR."
+
+# Genome annotations
+tss_file: "/mnt/10T-backup-mingju/ifar/databases/hg38/GeneBased/ensGene/gencode29/gencode.v29.annotation.gtf.pcg.tss_sorted_lexicographical"
+
+# Expression data
+tx_expression: "/mnt/10T-backup-mingju/ifar/ENCODE/osteoblast/RNAseq/osteoblast_RNAseq_tx_ENCFF220VSM.tsv.simple"
+gene_list: "/mnt/10T-backup-mingju/ifar/databases/hg38/GeneBased/ensGene/gencode29/gencode.v29.annotation.gtf_gene.txt"
+gene_expression: "/mnt/10T-backup-mingju/ifar/ENCODE/osteoblast/RNAseq/osteoblast_RNAseq_gene_ENCFF220VSM.tsv.simple"
+
+# Feature files
+feature_list: "/mnt/10T-backup-mingju/ifar/EP_modeling/UW_BMD/feature_list"
+features_sort: "/mnt/10T-backup-mingju/ifar/EP_modeling/UW_BMD/features_sort"
+
+# Parameters
+enhancer_window: 250  # bp around SNP for enhancer
+promoter_window: 250  # bp around TSS for promoter
+hic_bin_size: 3000    # Hi-C bin size
+
+# Output directory (current directory)
+output_dir: "/mnt/10T-backup-mingju/ifar/EP_modeling/UW_BMD/EPFinder_preprocessing" 
+# Final output file name
+output_file: "BMD_GWAS_feature_annotation.tsv"
