@@ -481,14 +481,14 @@ def main():
 
     config["config['tmp_dir']"] = config['tmp_dir']
     #Run all steps
-    #step1_hic_matrix_mapping(config)
-    #step2_hic_prom(config)
-    #step3_hicbin2_tss_overlap(config)
-    #step4_format(config)
-    #step5_mapping_tx_quantifications(config)
-    #step6_mapping_gene_quantification(config)
-    #step7_split_class_enh_prom(config)
-    #step8_bedtool_overlap(config)
+    step1_hic_matrix_mapping(config)
+    step2_hic_prom(config)
+    step3_hicbin2_tss_overlap(config)
+    step4_format(config)
+    step5_mapping_tx_quantifications(config)
+    step6_mapping_gene_quantification(config)
+    step7_split_class_enh_prom(config)
+    step8_bedtool_overlap(config)
     final_file = step9_add_allfeatures(config)
     if "output_file" in config:
         os.rename(final_file, config["output_file"])
