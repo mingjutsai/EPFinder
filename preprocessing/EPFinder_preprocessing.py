@@ -379,6 +379,91 @@ def step9_add_allfeatures(config):
     print("Step 9 completed.")
     return current_input
     
+def step10_svmformat(config, input_file):
+    """Step 10: Convert to SVM format and scale."""
+    base_name = os.path.splitext(os.path.basename(input_file))[0]
+    svm_file = base_name + "_allfeatures_ml.svm"
+    header_file = svm_file + ".header"
+    index_file = base_name + ".index.txt"
+    scale_file = svm_file + ".scale"
+
+    print("Step 10: Converting to SVM format...")
+
+    with open(header_file, 'w') as head_f, open(index_file, 'w') as index_f, open(svm_file, 'w') as svm_f:
+        with open(input_file, 'r') as in_f:
+            for line in in_f:
+                line = line.strip()
+                if line.startswith('#'):
+                    # Create header
+                    header_parts = line.split('\t')
+                    header = "Class\t"
+                    for i in range(10, 38):  # 10 to 37
+                        header += header_parts[i] + "\t"
+                    header += "Hi-C_contact"
+                    head_f.write(header + "\n")
+
+                    # Index header
+                    index_header = ""
+                    for i in range(9):  # 0 to 8
+                        index_header += header_parts[i] + "\t"
+                    index_header = index_header.rstrip('\t')
+                    index_f.write(index_header + "\n")
+                    continue
+
+                parts = line.split('\t')
+                # Index
+                index_line = ""
+                for i in range(9):
+                    index_line += parts[i] + "\t"
+                index_line = index_line.rstrip('\t')
+                index_f.write(index_line + "\n")
+
+                # SVM
+                hic = parts[9]
+                svm_line = "0\t"  # Class 0
+                for i in range(10, 38):
+                    no = i - 9
+                    svm_line += f"{no}:{parts[i]}\t"
+                svm_line += f"29:{hic}"
+                svm_f.write(svm_line + "\n")
+
+    # Scale
+    cmd = f"{config['svm_scale_tool']} -r {config['svm_scale_range']} {svm_file} > {scale_file}"
+    print(f"Running: {cmd}")
+    subprocess.run(cmd, shell=True, check=True)
+
+    print("Step 10 completed.")
+    return scale_file
+
+def step11_svm2EPFinder(config, input_file, header_file):
+    """Step 11: Convert scaled SVM back to EPFinder input TSV."""
+    output_file = input_file + ".input.tsv"
+
+    print("Step 11: Converting to EPFinder input TSV...")
+
+    with open(output_file, 'w') as out_f:
+        # Write header
+        with open(header_file, 'r') as head_f:
+            for line in head_f:
+                out_f.write(line)
+
+        # Write data
+        with open(input_file, 'r') as in_f:
+            for line in in_f:
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split()
+                info = parts[0] + "\t"  # Class
+                for p in parts[1:]:
+                    val = p.split(':' )[1]
+                    info += val + "\t"
+                info = info.rstrip('\t')
+                out_f.write(info + "\n")
+
+    print("Step 11 completed.")
+    return output_file
+
 def main():
     """Main function to run the entire workflow."""
     if len(sys.argv) != 2:
@@ -408,6 +493,12 @@ def main():
     if "output_file" in config:
         os.rename(final_file, config["output_file"])
         print(f"Renamed final output to {config["output_file"]}")
+
+    if config.get('use_scale', False):
+        scaled_file = step10_svmformat(config, config["output_file"])
+        header_file = os.path.splitext(scaled_file)[0] + '.header'
+        step11_svm2EPFinder(config, scaled_file, header_file)
+        print("Scaling steps completed.")
 
     print("Workflow completed successfully!")
 

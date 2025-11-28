@@ -28,3 +28,8 @@ hic_bin_size: 3000    # Hi-C bin size
 output_dir: "/mnt/10T-backup-mingju/ifar/EP_modeling/UW_BMD/EPFinder_preprocessing" 
 # Final output file name
 output_file: "BMD_GWAS_feature_annotation.tsv"
+# Scale option
+use_scale: True
+# SVM scale tool and range file
+svm_scale_tool: "/mnt/10T-backup-mingju/ifar/tools/libsvm/bin/svm-scale"
+svm_scale_range: "/home/mingju/EPFinder/preprocessing/29features.scale.tmp"
