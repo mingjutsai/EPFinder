@@ -1,5 +1,16 @@
 # EPFinder
 
+## Environment Setup
+
+Create and activate the conda environment:
+
+```bash
+conda env create -f conda/EPFinder_env.yaml
+conda activate EPFinder_env
+```
+
+Ensure that Jupyter Notebook is run within this environment for the prediction step.
+
 ## Usage
 
 ### Step 1: Data Preprocessing
