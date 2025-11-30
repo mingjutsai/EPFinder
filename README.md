@@ -19,7 +19,7 @@ Before running the preprocessing script, configure the settings in `preprocessin
 Once configured, run the preprocessing script:
 
 ```bash
-python preprocessing/EPFinder_preprocessing.py
+python preprocessing/EPFinder_preprocessing.py preprocessing/config.yaml
 ```
 
 This script will generate the necessary input file for the prediction step.
