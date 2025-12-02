@@ -1,0 +1,10 @@
+name: EPFinder_env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - mljar-supervised=1.1.6
+  - scikit-learn=0.24.2
+  - joblib
+  - ipykernel
+prefix: /opt/homebrew/Caskroom/mambaforge/base/envs/mljar_py39
