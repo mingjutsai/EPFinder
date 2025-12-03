@@ -9,7 +9,7 @@ conda env create -f conda/EPFinder_env.yml
 conda activate EPFinder_env
 ```
 
-Ensure that Jupyter Notebook is run within this environment for the prediction step.
+Ensure that all the following steps are run within this activated environment.
 
 ## Usage
 
