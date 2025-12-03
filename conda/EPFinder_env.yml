@@ -7,4 +7,3 @@ dependencies:
   - scikit-learn=0.24.2
   - joblib
   - ipykernel
-prefix: /opt/homebrew/Caskroom/mambaforge/base/envs/mljar_py39
