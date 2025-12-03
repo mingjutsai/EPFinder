@@ -5,7 +5,7 @@
 Create and activate the conda environment:
 
 ```bash
-conda env create -f conda/EPFinder_env.yaml
+conda env create -f conda/EPFinder_env.yml
 conda activate EPFinder_env
 ```
 
