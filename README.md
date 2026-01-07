@@ -25,7 +25,10 @@ python preprocessing/EPFinder_preprocessing.py preprocessing/config.yaml
 This script will generate the necessary input file for the prediction step.
 
 ### Step 2: Prediction
-Open the `EPFinder_prediction.ipynb` notebook and run it, using the input file generated from Step 1 to perform the prediction.
+The user needs to register the kernel first. To register the kernel, run:
 
-To register the kernel, run: `python -m ipykernel install --user --name EPFinder_env --display-name "EPFinder_env"`.
-Then, in the notebook UI, select EPFinder_env as the kernel.
+```bash
+python -m ipykernel install --user --name EPFinder_env --display-name "EPFinder_env"
+```
+
+Then, they can open the `EPFinder_prediction.ipynb` notebook, choose the EPFinder_env as the kernel, and run it using the input file generated from Step 1 to perform the prediction.
