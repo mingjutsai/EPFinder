@@ -6,7 +6,6 @@ EPFinder PreProcessing Workflow
 import os
 import sys
 import yaml
-from pybedtools import BedTool
 import subprocess
 from collections import defaultdict
 import pandas as pd
@@ -197,19 +196,52 @@ def step2_hic_prom(config):
     print(f"Step 2 completed. Output: {sorted_file}")
 
 def step3_hicbin2_tss_overlap(config):
-    """Step 3: Find overlaps between Hi-C bins and TSS."""
-    input_file = os.path.join(config['tmp_dir'], config['base_name'] + ".hic_contact_hicbin2_sorted_lexicographical")
+    """
+    Step 3: Find overlaps between Hi-C bins and TSS (bedtools CLI).
+    Equivalent to:
+        bedtools intersect -a hic_bins -b tss -wa -wb -sorted -F 1.0
+    """
+    input_file = os.path.join(
+        config['tmp_dir'],
+        config['base_name'] + ".hic_contact_hicbin2_sorted_lexicographical"
+    )
     tss_file = config['tss_file']
-    output_file = os.path.join(config['tmp_dir'], f"{config['base_name']}.hic_contact_hicbin2_tss")
+    output_file = os.path.join(
+        config['tmp_dir'],
+        f"{config['base_name']}.hic_contact_hicbin2_tss"
+    )
 
-    print("Step 3: Finding TSS overlaps...")
+    bedtools = config.get("bedtools_path", "bedtools")
 
-    a = BedTool(input_file)
-    b = BedTool(tss_file)
-    result = a.intersect(b, wa=True, wb=True, sorted=True, F=1.0)
-    result.saveas(output_file)
+    print("Step 3: Finding TSS overlaps (bedtools CLI)...")
+    print(f"Using bedtools: {bedtools}")
+
+    # Ensure input files exist
+    if not os.path.exists(input_file):
+        raise FileNotFoundError(input_file)
+    if not os.path.exists(tss_file):
+        raise FileNotFoundError(tss_file)
+
+    # IMPORTANT:
+    # input_file is already sorted in Step 2
+    # tss_file MUST also be sorted for -sorted to be correct
+    tss_sorted = tss_file + ".sorted"
+    if not os.path.exists(tss_sorted):
+        cmd = f'{bedtools} sort -i "{tss_file}" > "{tss_sorted}"'
+        subprocess.run(cmd, shell=True, check=True)
+
+    cmd = (
+        f'{bedtools} intersect '
+        f'-a "{input_file}" '
+        f'-b "{tss_sorted}" '
+        f'-wa -wb -sorted -F 1.0 '
+        f'> "{output_file}"'
+    )
+
+    subprocess.run(cmd, shell=True, check=True)
 
     print(f"Step 3 completed. Output: {output_file}")
+
 
 def step4_format(config):
     """Step 4: Format the data with enhancer and promoter regions."""
@@ -364,43 +396,78 @@ def step8_bedtool_overlap(config):
     enh_file = os.path.join(config['tmp_dir'], input_base + ".enh")
     prom_file = os.path.join(config['tmp_dir'], input_base + ".prom")
     feature_list = config['feature_list']
-    # Sort the files
+
+    bedtools = config.get("bedtools_path", "bedtools")
+    sort_bin = config.get("sort_path", "sort")
+
+    print("Step 8: Running bedtools overlap for features (CLI)...")
+    print(f"Using bedtools: {bedtools}")
+
+    # ---- 8.0 Sort enh/prom once (required for -sorted) ----
     enh_sorted = enh_file + ".sorted"
-    BedTool(enh_file).sort().saveas(enh_sorted)
-    enh_file = enh_sorted
     prom_sorted = prom_file + ".sorted"
-    BedTool(prom_file).sort().saveas(prom_sorted)
+
+    if not os.path.exists(enh_sorted):
+        cmd = f'{bedtools} sort -i "{enh_file}" > "{enh_sorted}"'
+        subprocess.run(cmd, shell=True, check=True)
+
+    if not os.path.exists(prom_sorted):
+        cmd = f'{bedtools} sort -i "{prom_file}" > "{prom_sorted}"'
+        subprocess.run(cmd, shell=True, check=True)
+
+    enh_file = enh_sorted
     prom_file = prom_sorted
 
-    print("Step 8: Running bedtools overlap for features...")
-
+    # ---- 8.1 Process each feature in feature_list ----
     with open(feature_list, 'r') as fl_f:
         for line in fl_f:
-            fields = line.strip().split('	')
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+
+            fields = line.split("\t")
             mark = fields[0]
             target_bed = fields[1]
+
             print(f"Processing {mark}...")
 
-            if not os.path.exists(os.path.join(config['tmp_dir'], mark)):
-                os.makedirs(os.path.join(config['tmp_dir'], mark))
+            mark_dir = os.path.join(config['tmp_dir'], mark)
+            os.makedirs(mark_dir, exist_ok=True)
 
-            enh_re = os.path.join(config['tmp_dir'], mark, os.path.basename(enh_file) + "." + mark)
+            # sort the target bed once (for -sorted speed)
+            target_sorted = os.path.join(mark_dir, os.path.basename(target_bed) + ".sorted")
+            if not os.path.exists(target_sorted):
+                cmd = f'{bedtools} sort -i "{target_bed}" > "{target_sorted}"'
+                subprocess.run(cmd, shell=True, check=True)
+
+            # enhancer intersect
+            enh_re = os.path.join(mark_dir, os.path.basename(enh_file) + "." + mark)
             if not os.path.exists(enh_re):
-                BedTool(enh_file).intersect(BedTool(target_bed), wao=True, sorted=True).saveas(enh_re)
+                cmd = (
+                    f'{bedtools} intersect -a "{enh_file}" -b "{target_sorted}" '
+                    f'-wao -sorted > "{enh_re}"'
+                )
+                subprocess.run(cmd, shell=True, check=True)
 
             enh_merge = enh_re + ".merge"
             if not os.path.exists(enh_merge):
                 merge_overlaps(enh_re, enh_merge)
 
-            prom_re = os.path.join(config['tmp_dir'], mark, os.path.basename(prom_file) + "." + mark)
+            # promoter intersect
+            prom_re = os.path.join(mark_dir, os.path.basename(prom_file) + "." + mark)
             if not os.path.exists(prom_re):
-                BedTool(prom_file).intersect(BedTool(target_bed), wao=True, sorted=True).saveas(prom_re)
+                cmd = (
+                    f'{bedtools} intersect -a "{prom_file}" -b "{target_sorted}" '
+                    f'-wao -sorted > "{prom_re}"'
+                )
+                subprocess.run(cmd, shell=True, check=True)
 
             prom_merge = prom_re + ".merge"
             if not os.path.exists(prom_merge):
                 merge_overlaps(prom_re, prom_merge)
 
     print("Step 8 completed.")
+
 
 def merge_overlaps(input_file, output_file):
     """Merge overlap results by summing value * bp."""

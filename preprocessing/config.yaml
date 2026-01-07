@@ -3,6 +3,9 @@
 # Input files
 input_gwas: "/mnt/10T-backup-mingju/ifar/EP_modeling/UW_BMD/BMD_GWAS_input.tsv"
 
+# bedtools
+bedtools_path: "/usr/bin/bedtools"
+
 # Hi-C data
 hic_folder: "/mnt/10T-backup-mingju/ifar/Hi-C/OB/3k"
 hic_prefix: "OB13.bam.pre.filter.q30.3k.hic.KR."
