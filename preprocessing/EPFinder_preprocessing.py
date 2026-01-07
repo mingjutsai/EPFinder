@@ -408,7 +408,7 @@ def main():
     final_file = step9_add_allfeatures(config)
     if "output_file" in config:
         os.rename(final_file, config["output_file"])
-        print(f"Renamed final output to {config["output_file"]}")
+        print(f'Renamed final output to {config["output_file"]}')
 
     print("Workflow completed successfully!")
 
