@@ -1,0 +1,13 @@
+DNase	/mnt/10T-backup-mingju/ifar/ENCODE/chromHMM/E129_osteoblasts/E129-DNase.imputed.pval.signal.hg38.bigwig.bedGraph
+H4K20me1	/mnt/10T-backup-mingju/ifar/ENCODE/chromHMM/E129_osteoblasts/E129-H4K20me1.imputed.pval.signal.hg38.bigwig.bedGraph
+H3K9me3	/mnt/10T-backup-mingju/ifar/ENCODE/chromHMM/E129_osteoblasts/E129-H3K9me3.imputed.pval.signal.hg38.bigwig.bedGraph
+H3K9ac	/mnt/10T-backup-mingju/ifar/ENCODE/chromHMM/E129_osteoblasts/E129-H3K9ac.imputed.pval.signal.hg38.bigwig.bedGraph
+H3K79me2	/mnt/10T-backup-mingju/ifar/ENCODE/chromHMM/E129_osteoblasts/E129-H3K79me2.imputed.pval.signal.hg38.bigwig.bedGraph
+H3K4me3	/mnt/10T-backup-mingju/ifar/ENCODE/chromHMM/E129_osteoblasts/E129-H3K4me3.imputed.pval.signal.hg38.bigwig.bedGraph
+H3K4me2	/mnt/10T-backup-mingju/ifar/ENCODE/chromHMM/E129_osteoblasts/E129-H3K4me2.imputed.pval.signal.hg38.bigwig.bedGraph
+H3K4me1	/mnt/10T-backup-mingju/ifar/ENCODE/chromHMM/E129_osteoblasts/E129-H3K4me1.imputed.pval.signal.hg38.bigwig.bedGraph
+H3K36me3	/mnt/10T-backup-mingju/ifar/ENCODE/chromHMM/E129_osteoblasts/E129-H3K36me3.imputed.pval.signal.hg38.bigwig.bedGraph
+H3K27me3	/mnt/10T-backup-mingju/ifar/ENCODE/chromHMM/E129_osteoblasts/E129-H3K27me3.imputed.pval.signal.hg38.bigwig.bedGraph
+H3K27ac	/mnt/10T-backup-mingju/ifar/ENCODE/chromHMM/E129_osteoblasts/E129-H3K27ac.imputed.pval.signal.hg38.bigwig.bedGraph
+H2A.Z	/mnt/10T-backup-mingju//ifar/ENCODE/chromHMM/E129_osteoblasts/E129-H2A.Z.imputed.pval.signal.hg38.bigwig.bedGraph
+CTCF	/mnt/10T-backup-mingju/ifar/ENCODE/chromHMM/E129_osteoblasts/osteoblast_CTCF_ENCFF643JJS.hg38.bigwig.bedGraph

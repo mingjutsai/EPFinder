@@ -1,10 +1,11 @@
 # Configuration file for BMD GWAS analysis workflow
 
 # Input files
-input_gwas: "/mnt/10T-backup-mingju/ifar/EP_modeling/UW_BMD/BMD_GWAS_input.tsv"
+input_gwas: "/mnt/10T-backup-mingju/ifar/gwas/eBMD/EPFinder_preprocessing/eBMD_OpenChromatin_OB_EPFinder_input.tsv"
 
 # bedtools
 bedtools_path: "/usr/bin/bedtools"
+
 
 # Hi-C data
 hic_folder: "/mnt/10T-backup-mingju/ifar/Hi-C/OB/3k"
@@ -19,18 +20,17 @@ gene_list: "/mnt/10T-backup-mingju/ifar/databases/hg38/GeneBased/ensGene/gencode
 gene_expression: "/mnt/10T-backup-mingju/ifar/ENCODE/osteoblast/RNAseq/osteoblast_RNAseq_gene_ENCFF220VSM.tsv.simple"
 
 # Feature files
-feature_list: "/mnt/10T-backup-mingju/ifar/EP_modeling/UW_BMD/feature_list"
-features_sort: "/mnt/10T-backup-mingju/ifar/EP_modeling/UW_BMD/features_sort"
+feature_list: "/home/mingju/EPFinder/preprocessing/feature_list"
 
 # Parameters
 enhancer_window: 250  # bp around SNP for enhancer
 promoter_window: 250  # bp around TSS for promoter
 hic_bin_size: 3000    # Hi-C bin size
 
-# Output directory (current directory)
-output_dir: "/mnt/10T-backup-mingju/ifar/EP_modeling/UW_BMD/EPFinder_preprocessing" 
+# Output directory
+output_dir: "/mnt/10T-backup-mingju/ifar/gwas/eBMD/EPFinder_preprocessing" 
 # Final output file name
-output_file: "BMD_GWAS_feature_annotation.tsv"
+output_file: "eBMD_OpenChromatin_SNPs_29features_ML.tsv"
 
 # number of threads in step1
-step1_nproc: 4
+step1_nproc: 24

@@ -14,6 +14,8 @@ Ensure that all the following steps are run within this activated environment.
 ## Usage
 
 ### Step 1: Data Preprocessing
+
+This step requires bedtools to be installed. Please install bedtools by following this tutorial: https://bedtools.readthedocs.io/en/latest/content/installation.html
 Before running the preprocessing script, configure the settings in `preprocessing/config.yaml`. This YAML file contains paths to input files, Hi-C data, genome annotations, and other parameters required for the analysis.
 
 Once configured, run the preprocessing script:
