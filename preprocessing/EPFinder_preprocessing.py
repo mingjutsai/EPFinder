@@ -120,59 +120,54 @@ def step1_hic_matrix_mapping(config):
     - For each chromosome:
         - stream its Hi-C file ONCE
         - keep contacts only for bins containing SNPs
-    - Parallelize by chromosome using ProcessPoolExecutor
+    - Parallelize by chromosome
     """
     input_file = config["input_gwas"]
     output_file = os.path.join(config["tmp_dir"], config["base_name"] + ".hic_contact")
 
-    chroms = sorted(snps_by_chr.keys(), key=chr_sort_key)
     nproc_cfg = int(config.get("step1_nproc", 4))
-    nproc = min(nproc_cfg, len(chroms))
-    print(f"Step1 nproc requested={nproc_cfg}, using={nproc} for {len(chroms)} chromosomes")
-    print(f"Step 1: Mapping Hi-C contacts (optimized, parallel by chr, nproc={nproc})...")
+    print(f"Step 1: Mapping Hi-C contacts (optimized, parallel by chr). Requested nproc={nproc_cfg}")
     print(f"GWAS input: {input_file}")
     print(f"Output: {output_file}")
 
+    # ✅ IMPORTANT: define snps_by_chr before using it
     snps_by_chr = load_gwas_by_chr(input_file)
     if not snps_by_chr:
         raise ValueError("No SNP lines found in input (after removing # header lines).")
 
-    # Prepare per-chr output files
+    chroms = sorted(snps_by_chr.keys(), key=chr_sort_key)
+    nproc = min(nproc_cfg, len(chroms))
+    print(f"Using nproc={nproc} for {len(chroms)} chromosomes")
+
     parts_dir = os.path.join(config["tmp_dir"], "step1_parts")
     os.makedirs(parts_dir, exist_ok=True)
 
-    chroms = sorted(snps_by_chr.keys(), key=chr_sort_key)
     jobs = []
     for chr_ in chroms:
         part_out = os.path.join(parts_dir, f"{config['base_name']}.chr{chr_}.hic_contact.part")
         jobs.append((chr_, snps_by_chr[chr_], config, part_out))
 
-    # Run parallel (by chromosome)
     finished_parts = []
     with ProcessPoolExecutor(max_workers=nproc) as ex:
         futs = {ex.submit(process_one_chr_hic, job): job[0] for job in jobs}
         for fut in as_completed(futs):
             chr_ = futs[fut]
-            try:
-                part_path = fut.result()
-                finished_parts.append(part_path)
-                print(f"  ✓ chr{chr_} done -> {part_path}")
-            except Exception as e:
-                print(f"  ✗ chr{chr_} failed: {e}")
-                raise
+            part_path = fut.result()
+            finished_parts.append(part_path)
+            print(f"  ✓ chr{chr_} done -> {part_path}")
 
-    # Merge parts in chromosome order into final output
-    # (Important for reproducibility)
+    # Merge parts in chromosome order
     with open(output_file, "w") as out:
         for chr_ in chroms:
             part_path = os.path.join(parts_dir, f"{config['base_name']}.chr{chr_}.hic_contact.part")
             if not os.path.exists(part_path):
-                raise FileNotFoundError(f"Missing expected Step1 output part: {part_path}")
+                raise FileNotFoundError(f"Missing Step1 part: {part_path}")
             with open(part_path, "r") as pf:
                 for line in pf:
                     out.write(line)
 
     print(f"Step 1 completed. Output: {output_file}")
+
 
 
 def step2_hic_prom(config):
