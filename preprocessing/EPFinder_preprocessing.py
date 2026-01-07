@@ -466,16 +466,27 @@ def add_feature(input_file, feature, fix_in, config):
                 out_f.write(line + "	" + str(enh_val) + "	" + str(prom_val) + "\n")
 
 def step9_add_allfeatures(config):
-    """Step 9: Add all features to the main file."""
-    base_input = os.path.join(config["tmp_dir"], f"{config['base_name']}.hic_contact_hicbin2_tss.format.Tx_expression.GENEexpression")
-    features_sort_file = config["features_sort"]
+    """
+    Step 9: Add all features to the main file
+    Uses feature_list order
+    """
+    base_input = os.path.join(
+        config["tmp_dir"],
+        f"{config['base_name']}.hic_contact_hicbin2_tss.format.Tx_expression.GENEexpression"
+    )
 
-    print("Step 9: Adding all features...")
+    feature_list_file = config["feature_list"]
+
+    print("Step 9: Adding all features (using feature_list order)...")
 
     current_input = None
-    with open(features_sort_file, "r") as fs_f:
-        for line in fs_f:
-            feature = line.strip()
+
+    with open(feature_list_file, "r") as fl_f:
+        for line in fl_f:
+            if not line.strip():
+                continue
+
+            feature = line.strip().split("\t")[0]
             print(f"Adding {feature}...")
 
             if current_input is None:
@@ -483,10 +494,11 @@ def step9_add_allfeatures(config):
                 current_input = f"{base_input}_{feature}"
             else:
                 add_feature(current_input, feature, base_input, config)
-                current_input += f"_{feature}"
+                current_input = f"{current_input}_{feature}"
 
     print("Step 9 completed.")
     return current_input
+
     
 
 def main():
