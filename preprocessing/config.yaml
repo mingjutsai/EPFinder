@@ -28,3 +28,6 @@ hic_bin_size: 3000    # Hi-C bin size
 output_dir: "/mnt/10T-backup-mingju/ifar/EP_modeling/UW_BMD/EPFinder_preprocessing" 
 # Final output file name
 output_file: "BMD_GWAS_feature_annotation.tsv"
+
+# number of threads in step1
+step1_nproc: 4

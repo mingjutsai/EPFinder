@@ -8,6 +8,10 @@ import sys
 import yaml
 from pybedtools import BedTool
 import subprocess
+from collections import defaultdict
+import pandas as pd
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
 
 def load_config(config_file):
     """Load configuration from YAML file."""
@@ -15,56 +19,161 @@ def load_config(config_file):
         config = yaml.safe_load(f)
     config["base_name"] = os.path.splitext(os.path.basename(config["input_gwas"]))[0]
     return config
+def normalize_chr(c: str) -> str:
+    """Normalize chromosome label to no 'chr' prefix: 'chr1'->'1', 'X'->'X'."""
+    c = c.strip()
+    if c.lower().startswith("chr"):
+        c = c[3:]
+    return c
+
+def chr_sort_key(c: str):
+    """Sort 1..22, X, Y, M/MT."""
+    c = normalize_chr(c)
+    if c.isdigit():
+        return (0, int(c))
+    c_up = c.upper()
+    if c_up == "X":
+        return (1, 23)
+    if c_up == "Y":
+        return (1, 24)
+    if c_up in ("M", "MT"):
+        return (1, 25)
+    return (2, c_up)
+
+def load_gwas_by_chr(input_file: str):
+    """
+    Read GWAS input once; return dict: chr -> list[(pos, original_line)].
+    Skips lines starting with '#'.
+    Assumes chr is fields[0], pos is fields[1] (0-based in python list).
+    """
+    snps_by_chr = defaultdict(list)
+    with open(input_file, "r") as f:
+        for line in f:
+            if not line.strip() or line.startswith("#"):
+                continue
+            line = line.rstrip("\n")
+            fields = line.split("\t")
+            chr_ = normalize_chr(fields[0])
+            pos = int(fields[1])
+            snps_by_chr[chr_].append((pos, line))
+    return snps_by_chr
+
+def process_one_chr_hic(args):
+    """
+    Worker: stream one chromosome's Hi-C file once, capture contacts only for SNP bins.
+    Writes a per-chr output file and returns its path.
+    """
+    chr_, items, config, out_path = args
+
+    BIN = int(config["hic_bin_size"])
+    hic_folder = config["hic_folder"]
+    hic_prefix = config["hic_prefix"]
+
+    # Build bins needed
+    needed_bins = set((pos // BIN) * BIN for pos, _ in items)
+
+    # Prepare hits map only for bins we care about
+    bin_hits = {b: [] for b in needed_bins}
+
+    # Resolve hic file
+    hic_chr = "chr" + chr_
+    hic_file = os.path.join(hic_folder, hic_prefix + hic_chr)
+    if not os.path.exists(hic_file):
+        raise FileNotFoundError(f"Hi-C file not found: {hic_file}")
+
+    # Stream Hi-C once
+    with open(hic_file, "r") as hf:
+        for line in hf:
+            line = line.rstrip("\n")
+            if not line:
+                continue
+            b1_s, b2_s, c = line.split("\t")
+            b1 = int(b1_s)
+            b2 = int(b2_s)
+            if c == "nan":
+                c = "0"
+
+            # Save if either side matches a needed bin
+            if b1 in bin_hits:
+                bin_hits[b1].append((b2, b2 + BIN, c))
+            if b2 in bin_hits:
+                bin_hits[b2].append((b1, b1 + BIN, c))
+
+    # Write outputs for this chr
+    # Note: preserves the original order of SNP lines as they appear in GWAS file for this chr
+    with open(out_path, "w") as out:
+        for pos, orig_line in items:
+            b = (pos // BIN) * BIN
+            hits = bin_hits.get(b, [])
+            if hits:
+                for s, e, c in hits:
+                    out.write(f"{orig_line}\t{s}\t{e}\t{c}\n")
+            else:
+                out.write(f"{orig_line}\tnan\tnan\t0\n")
+
+    return out_path
 
 def step1_hic_matrix_mapping(config):
-    """Step 1: Map GWAS SNPs to Hi-C contact matrices."""
-    input_file = config['input_gwas']
-    hic_folder = config['hic_folder']
-    hic_prefix = config['hic_prefix']
-    output_file = os.path.join(config['tmp_dir'], config['base_name'] + ".hic_contact")
+    """
+    Step 1 (Optimized + Parallel):
+    - Read GWAS once and group SNPs by chromosome
+    - For each chromosome:
+        - stream its Hi-C file ONCE
+        - keep contacts only for bins containing SNPs
+    - Parallelize by chromosome using ProcessPoolExecutor
+    """
+    input_file = config["input_gwas"]
+    output_file = os.path.join(config["tmp_dir"], config["base_name"] + ".hic_contact")
 
-    print("Step 1: Mapping Hi-C contacts...")
+    chroms = sorted(snps_by_chr.keys(), key=chr_sort_key)
+    nproc_cfg = int(config.get("step1_nproc", 4))
+    nproc = min(nproc_cfg, len(chroms))
+    print(f"Step1 nproc requested={nproc_cfg}, using={nproc} for {len(chroms)} chromosomes")
+    print(f"Step 1: Mapping Hi-C contacts (optimized, parallel by chr, nproc={nproc})...")
+    print(f"GWAS input: {input_file}")
+    print(f"Output: {output_file}")
 
-    with open(output_file, 'w') as out_f:
-        with open(input_file, 'r') as in_f:
-            for line_num, line in enumerate(in_f, 1):
-                line = line.strip()
-                if line.startswith('#'):
-                    continue
-                print(f"No.{line_num}\t{line}")
+    snps_by_chr = load_gwas_by_chr(input_file)
+    if not snps_by_chr:
+        raise ValueError("No SNP lines found in input (after removing # header lines).")
 
-                fields = line.split('\t')
-                snp_chr = "chr" + fields[0]
-                snp_start = int(fields[1])
+    # Prepare per-chr output files
+    parts_dir = os.path.join(config["tmp_dir"], "step1_parts")
+    os.makedirs(parts_dir, exist_ok=True)
 
-                hic_file = os.path.join(hic_folder, hic_prefix + snp_chr)
-                if not os.path.exists(hic_file):
-                    print(f"Error: {hic_file} doesn't exist")
-                    sys.exit(1)
+    chroms = sorted(snps_by_chr.keys(), key=chr_sort_key)
+    jobs = []
+    for chr_ in chroms:
+        part_out = os.path.join(parts_dir, f"{config['base_name']}.chr{chr_}.hic_contact.part")
+        jobs.append((chr_, snps_by_chr[chr_], config, part_out))
 
-                match = False
-                with open(hic_file, 'r') as hic_f:
-                    for hic_line in hic_f:
-                        hic_fields = hic_line.strip().split('\t')
-                        hic_bin1_start = int(hic_fields[0])
-                        hic_bin1_end = hic_bin1_start + config['hic_bin_size']
-                        hic_bin2_start = int(hic_fields[1])
-                        hic_bin2_end = hic_bin2_start + config['hic_bin_size']
-                        contact_freq = hic_fields[2]
-                        if contact_freq == "nan":
-                            contact_freq = "0"
+    # Run parallel (by chromosome)
+    finished_parts = []
+    with ProcessPoolExecutor(max_workers=nproc) as ex:
+        futs = {ex.submit(process_one_chr_hic, job): job[0] for job in jobs}
+        for fut in as_completed(futs):
+            chr_ = futs[fut]
+            try:
+                part_path = fut.result()
+                finished_parts.append(part_path)
+                print(f"  ✓ chr{chr_} done -> {part_path}")
+            except Exception as e:
+                print(f"  ✗ chr{chr_} failed: {e}")
+                raise
 
-                        if hic_bin1_start <= snp_start <= hic_bin1_end:
-                            out_f.write(f"{line}\t{hic_bin2_start}\t{hic_bin2_end}\t{contact_freq}\n")
-                            match = True
-                        elif hic_bin2_start <= snp_start <= hic_bin2_end:
-                            out_f.write(f"{line}\t{hic_bin1_start}\t{hic_bin1_end}\t{contact_freq}\n")
-                            match = True
-
-                if not match:
-                    out_f.write(f"{line}\tnan\tnan\t0\n")
+    # Merge parts in chromosome order into final output
+    # (Important for reproducibility)
+    with open(output_file, "w") as out:
+        for chr_ in chroms:
+            part_path = os.path.join(parts_dir, f"{config['base_name']}.chr{chr_}.hic_contact.part")
+            if not os.path.exists(part_path):
+                raise FileNotFoundError(f"Missing expected Step1 output part: {part_path}")
+            with open(part_path, "r") as pf:
+                for line in pf:
+                    out.write(line)
 
     print(f"Step 1 completed. Output: {output_file}")
+
 
 def step2_hic_prom(config):
     """Step 2: Filter and format Hi-C contact data."""
