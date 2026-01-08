@@ -428,17 +428,29 @@ def step8_bedtool_overlap(config):
             fields = line.split("\t")
             mark = fields[0]
             target_bed = fields[1]
+            if not os.path.exists(target_bed):
+                raise FileNotFoundError(f"Feature BED not found: {target_bed}")
 
             print(f"Processing {mark}...")
 
             mark_dir = os.path.join(config['tmp_dir'], mark)
             os.makedirs(mark_dir, exist_ok=True)
 
-            # sort the target bed once (for -sorted speed)
-            target_sorted = os.path.join(mark_dir, os.path.basename(target_bed) + ".sorted")
-            if not os.path.exists(target_sorted):
-                cmd = f'{bedtools} sort -i "{target_bed}" > "{target_sorted}"'
-                subprocess.run(cmd, shell=True, check=True)
+            # Use pre-sorted bed directly if it already ends with .sorted
+            if target_bed.endswith(".sorted"):
+                target_sorted = target_bed
+            else:
+                target_dir = os.path.dirname(os.path.abspath(target_bed))
+                target_sorted = os.path.join(
+                    target_dir,
+                    os.path.basename(target_bed) + ".sorted"
+                )
+
+                if not os.path.exists(target_sorted):
+                    cmd = f'{bedtools} sort -i "{target_bed}" > "{target_sorted}"'
+                    subprocess.run(cmd, shell=True, check=True)
+
+
 
             # enhancer intersect
             enh_re = os.path.join(mark_dir, os.path.basename(enh_file) + "." + mark)
