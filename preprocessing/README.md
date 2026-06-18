@@ -1,6 +1,6 @@
 # EPFinder Preprocessing Pipeline
 
-This directory contains the preprocessing pipeline that constructs the 29-feature input matrix required by EPFinder for enhancer-promoter interaction prediction. The pipeline integrates osteoblast multi-omics data from Hi-C, ChIP-seq, DNase-seq, and RNA-seq at candidate GWAS SNP loci.
+This directory contains the preprocessing pipeline that constructs the 29-feature input matrix required by EPFinder for SNP-to-gene prediction. The pipeline integrates osteoblast multi-omics data from Hi-C, ChIP-seq, DNase-seq, and RNA-seq at candidate GWAS SNP loci.
 
 ## Overview
 
@@ -19,7 +19,7 @@ The output is one row per candidate enhancer-promoter pair, with 29 features spa
 | File | Description |
 |------|-------------|
 | `EPFinder_preprocessing.py` | Main preprocessing script (9-step pipeline) |
-| `config.yaml` | Configuration file — all input paths and parameters |
+| `config.yaml` | Public configuration template |
 | `feature_list` | Ordered list of chromatin feature names and signal file paths |
 
 ## Requirements
@@ -36,7 +36,14 @@ pip install pyyaml pandas
 
 ## Configuration
 
-Edit `config.yaml` before running. Key parameters:
+Copy `config.yaml` to a local config file and edit paths before running:
+
+```bash
+cp config.yaml config.local.yaml
+```
+
+Relative paths in the config are resolved relative to the config file location
+before the workflow changes into `output_dir`. Key parameters:
 
 ```yaml
 # Input GWAS SNP file (TSV: chr, pos, ...)
@@ -76,7 +83,7 @@ step1_nproc: 24
 ## Usage
 
 ```bash
-python EPFinder_preprocessing.py config.yaml
+python EPFinder_preprocessing.py config.local.yaml
 ```
 
 The script creates a `tmp/` subdirectory inside `output_dir` for intermediate files. The final output file is written to `output_dir/output_file`.
