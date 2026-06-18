@@ -43,7 +43,6 @@ Run EPFinder prediction on the included benchmark-format matrix:
 ```bash
 python scripts/EPFinder_predict.py \
   --input dataset/gm12878_29features_ML.tsv \
-  --model finalize_EPFinder_model \
   --output examples/gm12878_EPFinder_predictions.tsv
 ```
 
@@ -84,7 +83,6 @@ The final preprocessing output is written to:
 ```bash
 python scripts/EPFinder_predict.py \
   --input /path/to/output/EPFinder_29features_ML.tsv \
-  --model finalize_EPFinder_model \
   --output /path/to/output/EPFinder_predictions.tsv
 ```
 
@@ -92,8 +90,7 @@ Alternatively, run both steps with the wrapper:
 
 ```bash
 python scripts/run_EPFinder_pipeline.py \
-  --config preprocessing/config.local.yaml \
-  --model finalize_EPFinder_model
+  --config preprocessing/config.local.yaml
 ```
 
 ## Output

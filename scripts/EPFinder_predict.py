@@ -13,6 +13,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 
 
 DEFAULT_METADATA_COLUMNS = ("#Class", "ID", "Enh", "Prom", "TX")
+DEFAULT_MODEL = Path(__file__).resolve().parents[1] / "finalize_EPFinder_model"
 
 
 def parse_args() -> argparse.Namespace:
@@ -26,10 +27,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model",
-        default="finalize_EPFinder_model",
+        default=str(DEFAULT_MODEL),
         help=(
-            "PyCaret model path. Provide the path without .pkl, or provide a .pkl path "
-            "and the suffix will be removed for pycaret.load_model()."
+            "Optional PyCaret model path. The bundled finalize_EPFinder_model is used by default."
         ),
     )
     parser.add_argument(

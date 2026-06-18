@@ -22,6 +22,8 @@ PATH_CONFIG_KEYS = (
     "output_dir",
 )
 
+DEFAULT_MODEL = Path(__file__).resolve().parents[1] / "finalize_EPFinder_model"
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -34,8 +36,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model",
-        default="finalize_EPFinder_model",
-        help="PyCaret EPFinder model path, with or without .pkl suffix.",
+        default=str(DEFAULT_MODEL),
+        help="Optional PyCaret model path. The bundled finalize_EPFinder_model is used by default.",
     )
     parser.add_argument(
         "--prediction-output",
