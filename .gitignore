@@ -1,0 +1,37 @@
+.DS_Store
+.ipynb_checkpoints/
+.grok/
+__pycache__/
+*.py[cod]
+
+# Local run logs and temporary outputs
+*.log
+logs.log
+tmp/
+output/
+outputs/
+results/
+examples/*
+!examples/README.md
+
+# Local/private configs
+*.local.yaml
+*.local.yml
+
+# Large analysis artifacts generated outside the core v1 workflow
+BMD/
+GM12878/
+Model/
+Model_test/
+cojo_bf3_int_EPFinder.csv
+nonml_set_enrichment_*.csv
+nonml_set_enrichment_*.png
+EPFinder_evaluation.ipynb
+
+# Keep the tracked benchmark-format example matrix, ignore local derived data.
+dataset/*
+!dataset/gm12878_29features_ML.tsv
+
+# Keep the tracked release model, but ignore other ad hoc model artifacts.
+*.pkl
+!finalize_EPFinder_model.pkl
