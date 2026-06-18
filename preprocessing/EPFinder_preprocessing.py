@@ -12,10 +12,34 @@ import pandas as pd
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
+PATH_CONFIG_KEYS = (
+    "input_gwas",
+    "hic_folder",
+    "tss_file",
+    "tx_expression",
+    "gene_list",
+    "gene_expression",
+    "feature_list",
+    "output_dir",
+)
+
+
+def resolve_config_paths(config, config_file):
+    """Resolve relative path values before the workflow changes directory."""
+    config_dir = os.path.abspath(os.path.dirname(config_file))
+    for key in PATH_CONFIG_KEYS:
+        value = config.get(key)
+        if not value or os.path.isabs(str(value)):
+            continue
+        config[key] = os.path.abspath(os.path.join(config_dir, str(value)))
+    return config
+
+
 def load_config(config_file):
     """Load configuration from YAML file."""
     with open(config_file, 'r') as f:
         config = yaml.safe_load(f)
+    config = resolve_config_paths(config, config_file)
     config["base_name"] = os.path.splitext(os.path.basename(config["input_gwas"]))[0]
     return config
 def normalize_chr(c: str) -> str:
@@ -557,7 +581,7 @@ def step9_add_allfeatures(config):
 
     with open(feature_list_file, "r") as fl_f:
         for line in fl_f:
-            if not line.strip():
+            if not line.strip() or line.startswith("#"):
                 continue
 
             feature = line.strip().split("\t")[0]

@@ -1,36 +1,41 @@
-# Configuration file for BMD GWAS analysis workflow
+# EPFinder preprocessing configuration template.
+#
+# Copy this file to a local path and replace every /path/to/... value with paths
+# available on your analysis server. Coordinates and annotations must use hg38.
 
-# Input files
-input_gwas: "/mnt/10T-backup-mingju/ifar/gwas/eBMD/EPFinder_preprocessing/eBMD_OpenChromatin_OB_EPFinder_input.tsv"
+# Input GWAS/candidate SNP file.
+# Required columns: chromosome in column 1 and SNP position in column 2.
+input_gwas: "/path/to/candidate_snps.hg38.tsv"
 
-# bedtools
-bedtools_path: "/usr/bin/bedtools"
+# External tools.
+bedtools_path: "bedtools"
 
-
-# Hi-C data
-hic_folder: "/mnt/10T-backup-mingju/ifar/Hi-C/OB/3k"
+# In-house osteoblast Hi-C contact matrix.
+# Files are expected to be per-chromosome text files named:
+#   {hic_prefix}chr1, {hic_prefix}chr2, ...
+# Each line should contain: bin_start<TAB>bin_end<TAB>contact_value.
+hic_folder: "/path/to/ob_day13_hic/3k"
 hic_prefix: "OB13.bam.pre.filter.q30.3k.hic.KR."
 
-# Genome annotations
-tss_file: "/mnt/10T-backup-mingju/ifar/databases/hg38/GeneBased/ensGene/gencode29/gencode.v29.annotation.gtf.pcg.tss_sorted_lexicographical"
+# Genome annotation: sorted hg38 protein-coding transcript TSS BED-like file.
+tss_file: "/path/to/gencode.v29.protein_coding.tss.sorted.tsv"
 
-# Expression data
-tx_expression: "/mnt/10T-backup-mingju/ifar/ENCODE/osteoblast/RNAseq/osteoblast_RNAseq_tx_ENCFF220VSM.tsv.simple"
-gene_list: "/mnt/10T-backup-mingju/ifar/databases/hg38/GeneBased/ensGene/gencode29/gencode.v29.annotation.gtf_gene.txt"
-gene_expression: "/mnt/10T-backup-mingju/ifar/ENCODE/osteoblast/RNAseq/osteoblast_RNAseq_gene_ENCFF220VSM.tsv.simple"
+# Osteoblast expression matrices.
+tx_expression: "/path/to/osteoblast_transcript_expression.tsv"
+gene_list: "/path/to/gencode.v29.gene_symbol_to_ensg.tsv"
+gene_expression: "/path/to/osteoblast_gene_expression.tsv"
 
-# Feature files
-feature_list: "/home/mingju/EPFinder/preprocessing/feature_list"
+# Ordered chromatin feature list.
+feature_list: "feature_list"
 
-# Parameters
-enhancer_window: 250  # bp around SNP for enhancer
-promoter_window: 250  # bp around TSS for promoter
-hic_bin_size: 3000    # Hi-C bin size
+# Feature-window parameters.
+enhancer_window: 250
+promoter_window: 250
+hic_bin_size: 3000
 
-# Output directory
-output_dir: "/mnt/10T-backup-mingju/ifar/gwas/eBMD/EPFinder_preprocessing" 
-# Final output file name
-output_file: "eBMD_OpenChromatin_SNPs_29features_ML.tsv"
+# Output.
+output_dir: "/path/to/epfinder_output"
+output_file: "EPFinder_29features_ML.tsv"
 
-# number of threads in step1
-step1_nproc: 24
+# Parallelism for Hi-C contact extraction.
+step1_nproc: 8
