@@ -80,6 +80,22 @@ output_file: "eBMD_SNPs_29features_ML.tsv"
 step1_nproc: 24
 ```
 
+## Input format requirements
+
+The workflow runs a preflight validator before Step 1. All input files are tab-separated text unless noted otherwise; blank lines and lines beginning with `#` are ignored.
+
+| Input | Required format |
+|---|---|
+| `input_gwas` | At least two columns: chromosome and 1-based SNP position. Additional columns are preserved. Chromosomes must correspond to the Hi-C filenames. |
+| Hi-C files in `hic_folder` | One file per chromosome named `{hic_prefix}chrN` (for example, `MB.hic.KR.chr1`). Each data row has exactly three columns: `bin_start`, `bin_end`, `contact`; bins are non-negative integers and contact is numeric or `nan`. |
+| `tss_file` | Sorted BED-like rows with at least five columns: chromosome, start, end, transcript ID, gene symbol. Coordinates are non-negative, and transcript IDs must be `ENST...`; version suffixes are allowed. Extra columns are permitted. |
+| `tx_expression` | Transcript ID in column 1 and expression value in the final column. Both a two-column matrix (`ENST`, value) and an RSEM-style matrix (`transcript_id`, `gene_id`, sample value) are supported. |
+| `gene_list` | At least six columns, with gene symbol in column 5 and Ensembl gene ID in column 6 (`ENSG...`, including version suffixes if present). |
+| `gene_expression` | Gene ID in column 1 and expression value in the final column. Both a two-column matrix and an RSEM-style matrix (`gene_id`, `transcript_id(s)`, sample value) are supported. |
+| `feature_list` | Two columns per row: unique feature name and path to a signal BED/bedGraph file. Each signal row must contain chromosome, start, end, and numeric signal value. |
+
+Ensembl release suffixes are normalized before mapping (`ENSG00000123456.11` and `ENSG00000123456` are treated as the same gene; the same applies to `ENST` IDs). The TSS and expression files must share stable transcript IDs, and the gene list and gene-expression matrix must share stable gene IDs. Missing expression entries are assigned `0` and summarized as warnings; a complete lack of overlap is a preflight error.
+
 ## Usage
 
 ```bash
