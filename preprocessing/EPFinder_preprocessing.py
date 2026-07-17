@@ -10,6 +10,7 @@ import subprocess
 from collections import defaultdict
 import pandas as pd
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from input_validation import normalize_ensembl_id, validate_inputs
 
 
 PATH_CONFIG_KEYS = (
@@ -289,11 +290,12 @@ def step4_format(config):
                 snp_pos = int(fields[4])
                 enh_start = snp_pos - enhancer_window
                 enh_end = snp_pos + enhancer_window
-                tss_pos = int(fields[10])
+                tss_fields = fields[-5:]
+                tss_pos = int(tss_fields[1])
                 prom_start = tss_pos - promoter_window
                 prom_end = tss_pos + promoter_window
-                prom_txid = fields[12]
-                prom_gene = fields[13]
+                prom_txid = tss_fields[3]
+                prom_gene = tss_fields[4]
                 hic_contact = fields[8]
                 snpid = fields[5]
 
@@ -318,7 +320,7 @@ def step5_mapping_tx_quantifications(config):
             fields = line.split('\t')
             if fields[0].startswith('ENST'):
                 tx_id = fields[0].split('.')[0]
-                tx_dict[tx_id] = fields[1]
+                tx_dict[tx_id] = fields[-1]
 
     with open(output_file, 'w') as out_f:
         with open(input_file, 'r') as in_f:
@@ -355,7 +357,7 @@ def step6_mapping_gene_quantification(config):
             if line.startswith('#'):
                 continue
             fields = line.split('\t')
-            gene_dict[fields[4]] = fields[5]
+            gene_dict[fields[4]] = normalize_ensembl_id(fields[5])
 
     # Load gene expressions
     expr_dict = {}
@@ -364,8 +366,10 @@ def step6_mapping_gene_quantification(config):
             line = line.strip()
             if line.startswith('ENSG'):
                 fields = line.split('\t')
-                expr_dict[fields[0]] = fields[1]
+                expr_dict[normalize_ensembl_id(fields[0])] = fields[-1]
 
+    missing_gene_ids = set()
+    missing_gene_symbols = set()
     with open(output_file, 'w') as out_f:
         with open(input_file, 'r') as in_f:
             for line in in_f:
@@ -381,15 +385,20 @@ def step6_mapping_gene_quantification(config):
 
                 if gene in gene_dict:
                     gene_id = gene_dict[gene]
-                    if gene_id in expr_dict:
-                        expr = expr_dict[gene_id]
-                        out_f.write(line + f"\t{expr}\n")
-                    else:
-                        print(f"Error: No expression for gene_id {gene_id}")
-                        sys.exit(1)
+                    expr = expr_dict.get(gene_id, '0')
+                    if gene_id not in expr_dict:
+                        missing_gene_ids.add(gene_id)
                 else:
-                    print(f"Error: Gene {gene} not found")
-                    sys.exit(1)
+                    expr = '0'
+                    missing_gene_symbols.add(gene)
+                out_f.write(line + f"\t{expr}\n")
+
+    if missing_gene_ids:
+        examples = ', '.join(sorted(missing_gene_ids)[:5])
+        print(f"Warning: {len(missing_gene_ids)} gene IDs lacked expression and were set to 0. Examples: {examples}")
+    if missing_gene_symbols:
+        examples = ', '.join(sorted(missing_gene_symbols)[:5])
+        print(f"Warning: {len(missing_gene_symbols)} gene symbols lacked a gene-list mapping and were set to 0. Examples: {examples}")
 
     print(f"Step 6 completed. Output: {output_file}")
 
@@ -607,6 +616,7 @@ def main():
 
     config_file = sys.argv[1]
     config = load_config(config_file)
+    validate_inputs(config)
 
     # Change to output directory
     os.makedirs(config["output_dir"], exist_ok=True)
