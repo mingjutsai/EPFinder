@@ -48,6 +48,14 @@ python scripts/EPFinder_predict.py \
 
 If the input contains `#Class`, the script also reports AUROC and AUPRC.
 
+To get a spreadsheet-friendly file instead, give the output a `.csv` extension:
+
+```bash
+python scripts/EPFinder_predict.py \
+  --input dataset/gm12878_29features_ML.tsv \
+  --output examples/gm12878_EPFinder_predictions.csv
+```
+
 ## Full preprocessing-to-prediction workflow
 
 1. Copy the config template and edit paths for your server:
@@ -100,6 +108,36 @@ matrix. Higher scores indicate stronger model support for the SNP-promoter pair.
 
 For GWAS applications, downstream ranking is typically performed per SNP or per
 GWAS locus, depending on the biological question.
+
+### Output format
+
+The prediction CLI writes TSV by default and switches to CSV when the output
+path ends in `.csv`. Use `--output-format` to set the delimiter explicitly when
+the filename does not carry the extension:
+
+```bash
+python scripts/EPFinder_predict.py \
+  --input  /path/to/output/EPFinder_29features_ML.tsv \
+  --output /path/to/output/EPFinder_predictions.csv
+
+# or, for an output path with a different extension
+python scripts/EPFinder_predict.py \
+  --input  /path/to/output/EPFinder_29features_ML.tsv \
+  --output /path/to/output/EPFinder_predictions.txt \
+  --output-format csv
+```
+
+The input delimiter is detected the same way, and `--input-format` overrides it.
+Preprocessing itself always writes TSV, because the workflow uses commas
+internally to build the enhancer/promoter merge keys.
+
+### Opening results in Excel
+
+CSV output opens directly in Excel, but import it with **Data > From Text/CSV**
+and set the `Prom_gene` column type to **Text** rather than double-clicking the
+file. Excel's default conversion silently rewrites gene symbols such as `SEPT2`,
+`MARCH1` and `DEC1` into dates, and the original symbols cannot be recovered
+once the file is saved.
 
 ## Notes
 

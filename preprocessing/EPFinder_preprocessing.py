@@ -10,7 +10,7 @@ import subprocess
 from collections import defaultdict
 import pandas as pd
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from input_validation import normalize_ensembl_id, validate_inputs
+from input_validation import normalize_chr, normalize_ensembl_id, validate_inputs
 
 
 PATH_CONFIG_KEYS = (
@@ -43,12 +43,6 @@ def load_config(config_file):
     config = resolve_config_paths(config, config_file)
     config["base_name"] = os.path.splitext(os.path.basename(config["input_gwas"]))[0]
     return config
-def normalize_chr(c: str) -> str:
-    """Normalize chromosome label to no 'chr' prefix: 'chr1'->'1', 'X'->'X'."""
-    c = c.strip()
-    if c.lower().startswith("chr"):
-        c = c[3:]
-    return c
 
 def chr_sort_key(c: str):
     """Sort 1..22, X, Y, M/MT."""

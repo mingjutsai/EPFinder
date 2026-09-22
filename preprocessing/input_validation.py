@@ -8,6 +8,14 @@ def normalize_ensembl_id(identifier):
     return identifier.strip().split('.', 1)[0]
 
 
+def normalize_chr(c):
+    """Normalize chromosome label to no 'chr' prefix: 'chr1'->'1', 'X'->'X'."""
+    c = c.strip()
+    if c.lower().startswith("chr"):
+        c = c[3:]
+    return c
+
+
 def _rows(path):
     with open(path) as handle:
         for number, raw in enumerate(handle, 1):
@@ -76,7 +84,7 @@ def validate_inputs(config):
     for number, fields in _rows(config['input_gwas']):
         if len(fields) < 2:
             raise ValueError(f"{config['input_gwas']}:{number}: need chromosome and position")
-        chromosome = fields[0].removeprefix('chr').removeprefix('CHR')
+        chromosome = normalize_chr(fields[0])
         if not chromosome:
             raise ValueError(f"{config['input_gwas']}:{number}: empty chromosome")
         _int(fields[1], f"{config['input_gwas']}:{number}: position", 1)
@@ -103,7 +111,7 @@ def validate_inputs(config):
     previous = None
     for number, fields in _rows(config['tss_file']):
         if len(fields) < 5:
-            raise ValueError(f"{config['tss_file']}:{number}: TSS rows need >=9 columns")
+            raise ValueError(f"{config['tss_file']}:{number}: TSS rows need >=5 columns")
         start = _int(fields[1], f"{config['tss_file']}:{number}: start")
         end = _int(fields[2], f"{config['tss_file']}:{number}: end")
         if end < start:
