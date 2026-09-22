@@ -1,9 +1,10 @@
 # EPFinder frozen environment (exact reproduction).
 #
-# This is a full export of the environment the release model was validated in.
-# Use it when you need byte-level reproducibility; for normal use prefer the
-# smaller conda/EPFinder_env.yml, which installs the same pinned model stack
-# without PyCaret's optional extras.
+# This is a full export of the original Python 3.8 environment the release
+# model was validated in. Python 3.8 is end of life; use it only when you need
+# byte-level reproduction of that environment. For normal use prefer the smaller
+# conda/EPFinder_env.yml, which runs the same model on Python 3.11 with
+# bit-identical scores.
 #
 # Create with:  conda env create -f conda/EPFinder_env.lock.yml
 name: EPFinder_env

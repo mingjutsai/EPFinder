@@ -1,7 +1,12 @@
 # Pip-only install path. Prefer conda/EPFinder_env.yml, which also installs
 # bedtools; this file covers the Python stack alone.
+# Python 3.8 to 3.11. The ceiling comes from scikit-learn 1.2.2 and PyCaret 3.2.0.
 pandas>=1.5,<2.0
 pyyaml>=6.0
+
+# The model's GradientBoosting estimators were pickled against
+# sklearn.ensemble._gb_losses, which scikit-learn 1.3 removed; later releases
+# cannot load the model at all.
 scikit-learn>=1.2,<1.3
 pycaret==3.2.0
 

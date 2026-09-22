@@ -48,10 +48,16 @@ jobs:
   prediction:
     # Installs from requirements.txt on purpose: that path once produced an
     # environment that could not load the bundled model at all.
-    name: prediction (requirements.txt)
+    # 3.11 is the runtime Python; 3.8 is the Python the model was saved under.
+    # Both must keep reproducing the benchmark.
+    name: prediction (py${{ matrix.python }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    container: python:3.8-slim
+    container: python:${{ matrix.python }}-slim
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.8', '3.11']
     steps:
       - name: Install build prerequisites
         run: |
@@ -64,8 +70,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-py38-${{ hashFiles('requirements.txt') }}
-          restore-keys: pip-py38-
+          key: pip-py${{ matrix.python }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: pip-py${{ matrix.python }}-
 
       - name: Install EPFinder dependencies
         run: |

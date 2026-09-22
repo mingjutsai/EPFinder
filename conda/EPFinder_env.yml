@@ -6,19 +6,24 @@
 #
 # Create with:  conda env create -f conda/EPFinder_env.yml
 #
-# Python 3.8 is pinned deliberately: finalize_EPFinder_model.pkl was serialized
-# under Python 3.8.18 with scikit-learn 1.2.2 and PyCaret 3.2.0, and PyCaret
-# warns on any mismatch at load time. The EPFinder source itself is not tied to
-# 3.8. Moving to a supported Python requires re-exporting the model.
+# The binding constraint is scikit-learn 1.2.2, not Python. The model's ensemble
+# contains GradientBoostingClassifier estimators pickled against
+# sklearn.ensemble._gb_losses, a module removed in scikit-learn 1.3, so the
+# model cannot be loaded on any later scikit-learn. Python 3.11 is the newest
+# release that scikit-learn 1.2.2 and PyCaret 3.2.0 support.
 #
-# For byte-level reproduction of the original environment, use
-# conda/EPFinder_env.lock.yml instead.
+# The model was saved under Python 3.8.18. Loading it here gives bit-identical
+# scores on the GM12878 benchmark, the K562 training set and 275,516 eBMD
+# enhancer-promoter pairs; PyCaret's version-mismatch warning at load time is
+# expected. Going beyond Python 3.11 requires re-training the model.
+#
+# For the original Python 3.8 environment, use conda/EPFinder_env.lock.yml.
 name: EPFinder_env
 channels:
   - conda-forge
   - bioconda
 dependencies:
-  - python=3.8.20
+  - python=3.11
   - bedtools>=2.30
   - pip=24.3.1
   - pip:
@@ -35,6 +40,8 @@ dependencies:
       # these, load_model() fails with ModuleNotFoundError.
       - xgboost==2.1.4
       - lightgbm==4.6.0
-      - catboost==1.1.1
+      # 1.1.1 was used at training time but ships no Python 3.11 wheel; 1.2.10
+      # loads the same model and reproduces its scores exactly.
+      - catboost==1.2.10
       # Only needed to run the notebooks.
       - ipykernel==6.29.5
