@@ -21,7 +21,7 @@ the first public pipeline version, from SNP preprocessing to model prediction.
 | `LICENSE` | MIT license. |
 | `tests/` | Test suite; runs on synthetic data with no external inputs. |
 | `conda/EPFinder_env.yml` | Recommended runtime environment, including bedtools. |
-| `conda/EPFinder_env.lock.yml` | Full frozen export for exact reproduction. |
+| `conda/EPFinder_env.lock.yml` | Full frozen export of the original Python 3.8 environment. |
 
 ## Installation
 
@@ -45,7 +45,7 @@ python -m ipykernel install --user --name EPFinder_env --display-name "EPFinder_
 | File | Use it when |
 | --- | --- |
 | `conda/EPFinder_env.yml` | Normal use. Pins the model stack and installs bedtools, without PyCaret's optional extras. |
-| `conda/EPFinder_env.lock.yml` | You need byte-level reproduction of the environment the release model was validated in. |
+| `conda/EPFinder_env.lock.yml` | You need byte-level reproduction of the original Python 3.8 environment the release model was validated in. |
 | `requirements.txt` | You are managing Python yourself. Covers the Python stack only; install bedtools separately. |
 
 `conda/EPFinder_env.yml` is authoritative for normal use. It resolves to roughly
@@ -57,14 +57,20 @@ they are the estimators inside the release model's voting ensemble, and
 `load_model()` fails with `ModuleNotFoundError` without them. PyCaret's base
 install does not pull in xgboost or catboost.
 
-### Why Python 3.8 is pinned
+### Python version
 
-`finalize_EPFinder_model.pkl` was serialized under Python 3.8.18 with
-scikit-learn 1.2.2 and PyCaret 3.2.0, and PyCaret warns on any deviation at load
-time. Python 3.8 reached end of life in October 2024, so this pin is a property
-of the released model artifact, not of EPFinder itself — the source in this
-repository runs on current Python. Moving to a supported Python requires
-re-exporting the model and re-validating it against the GM12878 benchmark below.
+The runtime environment uses Python 3.11. The binding constraint is
+scikit-learn, not Python: the model's ensemble contains GradientBoosting
+estimators pickled against `sklearn.ensemble._gb_losses`, a module removed in
+scikit-learn 1.3, so the model cannot be loaded on any later scikit-learn.
+Python 3.11 is the newest release that scikit-learn 1.2.2 and PyCaret 3.2.0
+support.
+
+`finalize_EPFinder_model.pkl` was saved under Python 3.8.18 and is shipped
+unchanged. Loading it on Python 3.11 gives bit-identical scores on the GM12878
+benchmark, the K562 training set and 275,516 eBMD enhancer-promoter pairs.
+PyCaret prints a version-mismatch warning at load time; it is expected. Moving
+past Python 3.11 requires re-training the model on a newer scikit-learn.
 
 If bedtools is already installed elsewhere on your system, point at it with
 `bedtools_path` in `preprocessing/config.yaml`.
