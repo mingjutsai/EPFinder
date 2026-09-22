@@ -10,7 +10,8 @@ import subprocess
 from collections import defaultdict
 import pandas as pd
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from input_validation import normalize_chr, normalize_ensembl_id, validate_inputs
+from input_validation import (detect_chr_prefix, format_chr, normalize_chr,
+                              normalize_ensembl_id, validate_inputs)
 
 
 PATH_CONFIG_KEYS = (
@@ -43,6 +44,29 @@ def load_config(config_file):
     config = resolve_config_paths(config, config_file)
     config["base_name"] = os.path.splitext(os.path.basename(config["input_gwas"]))[0]
     return config
+
+def gwas_column_count(config):
+    """Number of columns per data row in the SNP file.
+
+    Steps 2 and 4 locate the Hi-C and TSS columns by offset from this width,
+    so it must be read from the input rather than assumed.
+    """
+    if config.get("gwas_columns"):
+        return config["gwas_columns"]
+    with open(config["input_gwas"]) as handle:
+        for line in handle:
+            if line.strip() and not line.startswith("#"):
+                config["gwas_columns"] = len(line.rstrip("\n").split("\t"))
+                return config["gwas_columns"]
+    raise ValueError("input_gwas contains no data rows")
+
+
+def chr_prefix_for(config, key, path):
+    """Chromosome convention of a reference file, detected once and cached."""
+    if key not in config:
+        config[key] = detect_chr_prefix(path)
+    return config[key]
+
 
 def chr_sort_key(c: str):
     """Sort 1..22, X, Y, M/MT."""
@@ -195,6 +219,11 @@ def step2_hic_prom(config):
 
     print("Step 2: Filtering Hi-C data...")
 
+    # Step 1 appends bin_start, bin_end and contact after the original SNP row,
+    # so the Hi-C columns sit at a fixed offset from the SNP file's width.
+    n_gwas = gwas_column_count(config)
+    tss_prefix = chr_prefix_for(config, "tss_chr_prefix", config["tss_file"])
+
     with open(output_file, 'w') as out_f:
         with open(input_file, 'r') as in_f:
             for line in in_f:
@@ -202,15 +231,18 @@ def step2_hic_prom(config):
                 if line.startswith('#'):
                     continue
                 fields = line.split('\t')
-                hic_bin_start = fields[3]
-                hic_bin_end = fields[4]
+                hic_bin_start = fields[n_gwas]
+                hic_bin_end = fields[n_gwas + 1]
                 if hic_bin_start != "nan" and hic_bin_end != "nan":
-                    chr_name = fields[0]
+                    # Must match the TSS file's convention: step 3 intersects them.
+                    chr_name = format_chr(fields[0], tss_prefix)
                     out_f.write(f"{chr_name}\t{hic_bin_start}\t{hic_bin_end}\t{line}\n")
 
-    # Sort lexicographically
+    # Sort lexicographically. LC_ALL=C keeps this consistent with bedtools sort,
+    # which step 3 applies to the TSS file before intersecting with -sorted.
     sorted_file = output_file + "_sorted_lexicographical"
-    subprocess.run(f"sort -k1,1 -k2,2n {output_file} > {sorted_file}", shell=True)
+    subprocess.run(f"LC_ALL=C sort -k1,1 -k2,2n {output_file} > {sorted_file}",
+                   shell=True, check=True)
 
     print(f"Step 2 completed. Output: {sorted_file}")
 
@@ -271,27 +303,42 @@ def step4_format(config):
 
     print("Step 4: Formatting data...")
 
+    # Column layout of the step 3 output, derived rather than assumed:
+    #   [0:3]                     chr, bin_start, bin_end  (added by step 2)
+    #   [3 : 3+n]                 the original SNP row
+    #   [3+n : 3+n+3]             bin_start, bin_end, contact  (added by step 1)
+    #   [3+n+3 : ]                the TSS row  (appended by bedtools -wb)
+    n_gwas = gwas_column_count(config)
+    contact_idx = 3 + n_gwas + 2
+    tss_idx = 3 + n_gwas + 3
+
     with open(output_file, 'w') as out_f:
         out_f.write("#Enh_chr\tEnh_start\tEnh_end\tProm_start\tProm_end\tProm_TXID\tProm_TSS\tProm_gene\tSNPID_at_Enh\tHiC_Contact\n")
 
         with open(input_file, 'r') as in_f:
-            for line in in_f:
+            for number, line in enumerate(in_f, 1):
                 line = line.strip()
                 if line.startswith('#'):
                     continue
                 fields = line.split('\t')
-                enh_chr = fields[3]
+                if len(fields) < tss_idx + 5:
+                    raise ValueError(
+                        f"{input_file}:{number}: expected at least {tss_idx + 5} columns for a "
+                        f"{n_gwas}-column SNP file, found {len(fields)}"
+                    )
+                enh_chr = normalize_chr(fields[3])
                 snp_pos = int(fields[4])
                 enh_start = snp_pos - enhancer_window
                 enh_end = snp_pos + enhancer_window
-                tss_fields = fields[-5:]
+                tss_fields = fields[tss_idx:]
                 tss_pos = int(tss_fields[1])
                 prom_start = tss_pos - promoter_window
                 prom_end = tss_pos + promoter_window
                 prom_txid = tss_fields[3]
                 prom_gene = tss_fields[4]
-                hic_contact = fields[8]
-                snpid = fields[5]
+                hic_contact = fields[contact_idx]
+                # Column 3 of the SNP file is the variant ID when present.
+                snpid = fields[5] if n_gwas >= 3 else f"{enh_chr}:{snp_pos}"
 
                 info = f"{enh_chr}\t{enh_start}\t{enh_end}\t{prom_start}\t{prom_end}\t{prom_txid}\t{tss_pos}\t{prom_gene}\t{snpid}\t{hic_contact}\n"
                 out_f.write(info)
@@ -404,6 +451,16 @@ def step7_split_class_enh_prom(config):
 
     print("Step 7: Splitting into enhancer and promoter files...")
 
+    # Must match the signal files' convention: step 8 intersects them.
+    feature_prefix = config.get("feature_chr_prefix")
+    if feature_prefix is None:
+        with open(config["feature_list"]) as fl_f:
+            for fl_line in fl_f:
+                if fl_line.strip() and not fl_line.startswith("#"):
+                    feature_prefix = detect_chr_prefix(fl_line.strip().split("\t")[1])
+                    break
+        config["feature_chr_prefix"] = feature_prefix
+
     with open(enh_file, 'w') as enh_f, open(prom_file, 'w') as prom_f:
         with open(input_file, 'r') as in_f:
             for line in in_f:
@@ -412,8 +469,9 @@ def step7_split_class_enh_prom(config):
                     continue
                 fields = line.split('\t')
                 info = ','.join(fields)
-                enh_f.write(f"chr{fields[0]}\t{fields[1]}\t{fields[2]}\t{info}\n")
-                prom_f.write(f"chr{fields[0]}\t{fields[3]}\t{fields[4]}\t{info}\n")
+                chrom = format_chr(fields[0], feature_prefix)
+                enh_f.write(f"{chrom}\t{fields[1]}\t{fields[2]}\t{info}\n")
+                prom_f.write(f"{chrom}\t{fields[3]}\t{fields[4]}\t{info}\n")
 
     print(f"Step 7 completed. Outputs: {enh_file}, {prom_file}")
 
