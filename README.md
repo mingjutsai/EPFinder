@@ -1,5 +1,7 @@
 # EPFinder
 
+[![CI](https://github.com/mingjutsai/EPFinder/actions/workflows/ci.yml/badge.svg)](https://github.com/mingjutsai/EPFinder/actions/workflows/ci.yml)
+
 EPFinder is a machine-learning workflow that uses enhancer-promoter regulatory
 features to prioritize target genes for noncoding SNPs. This repository provides
 the first public pipeline version, from SNP preprocessing to model prediction.
@@ -16,6 +18,7 @@ the first public pipeline version, from SNP preprocessing to model prediction.
 | `finalize_EPFinder_model.pkl` | Trained EPFinder PyCaret model. |
 | `dataset/gm12878_29features_ML.tsv` | Small benchmark-format matrix useful for testing prediction. |
 | `docs/input_formats.md` | Input file requirements and expected formats. |
+| `tests/` | Test suite; runs on synthetic data with no external inputs. |
 | `conda/EPFinder_env.yml` | Recommended runtime environment, including bedtools. |
 | `conda/EPFinder_env.lock.yml` | Full frozen export for exact reproduction. |
 
@@ -64,6 +67,17 @@ re-exporting the model and re-validating it against the GM12878 benchmark below.
 
 If bedtools is already installed elsewhere on your system, point at it with
 `bedtools_path` in `preprocessing/config.yaml`.
+
+## Tests
+
+```bash
+pip install pytest
+pytest tests/
+```
+
+The suite builds its own synthetic inputs, so it needs no reference genomics
+data. Tests skip rather than fail when bedtools or the PyCaret stack is absent.
+See `tests/README.md`.
 
 ## Quick prediction test
 

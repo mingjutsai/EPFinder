@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  schedule:
+    # Weekly, so the slow install check notices upstream drift on its own.
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preprocessing:
+    # Runs against a synthetic fixture, so it needs no reference genomics data.
+    # Python 3.8 is not available through setup-python on current runner
+    # images, and the pinned Python is a property of the model rather than of
+    # the preprocessing code, so each version runs in its own container.
+    name: preprocessing (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: python:${{ matrix.python }}-slim
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.8 is what the released model pins; 3.11 and 3.12 keep us honest
+        # about the preprocessing code not being tied to it.
+        python: ['3.8', '3.11', '3.12']
+    steps:
+      # Before checkout, so actions/checkout finds git rather than falling back.
+      - name: Install bedtools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends bedtools git ca-certificates
+          bedtools --version
+
+      - uses: actions/checkout@v4
+
+      - name: Install Python dependencies
+        run: pip install --no-cache-dir pytest pyyaml pandas
+
+      - name: Run workflow tests
+        run: pytest tests/test_preprocessing.py tests/test_validation.py -v
+
+  prediction:
+    # Installs from requirements.txt on purpose: that path once produced an
+    # environment that could not load the bundled model at all.
+    name: prediction (requirements.txt)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container: python:3.8-slim
+    steps:
+      - name: Install build prerequisites
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends build-essential git ca-certificates
+
+      - uses: actions/checkout@v4
+
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-py38-${{ hashFiles('requirements.txt') }}
+          restore-keys: pip-py38-
+
+      - name: Install EPFinder dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Verify the model loads and reproduces the benchmark
+        run: pytest tests/test_prediction.py -v
+
+  conda-env:
+    # The documented install path, checked on a schedule because it is slow.
+    name: conda environment
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: conda/EPFinder_env.yml
+          activate-environment: EPFinder_env
+          miniforge-version: latest
+          auto-activate-base: false
+
+      - name: Report resolved environment
+        run: |
+          python --version
+          bedtools --version
+          conda list
+
+      - name: Run the full suite in the documented environment
+        run: |
+          pip install pytest
+          pytest tests/ -v
