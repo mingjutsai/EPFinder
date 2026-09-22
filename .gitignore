@@ -14,11 +14,16 @@ results/
 examples/*
 !examples/README.md
 
-# Local/private configs
+# Local/private configs and server-specific file lists.
+# feature_list.local holds absolute paths to reference data on the analysis
+# server, so it must never be committed.
+*.local
 *.local.yaml
 *.local.yml
 
-# Large analysis artifacts generated outside the core v1 workflow
+# Large analysis artifacts generated outside the core v1 workflow.
+# Kept out of the repository so it stays focused on the reproducible pipeline.
+analysis/
 BMD/
 GM12878/
 Model/
@@ -26,7 +31,10 @@ Model_test/
 cojo_bf3_int_EPFinder.csv
 nonml_set_enrichment_*.csv
 nonml_set_enrichment_*.png
+epfinder_*.csv
+epfinder_*.png
 EPFinder_evaluation.ipynb
+eBMD_*.ipynb
 
 # Keep the tracked benchmark-format example matrix, ignore local derived data.
 dataset/*
