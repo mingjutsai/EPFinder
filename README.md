@@ -18,6 +18,7 @@ the first public pipeline version, from SNP preprocessing to model prediction.
 | `finalize_EPFinder_model.pkl` | Trained EPFinder PyCaret model. |
 | `dataset/gm12878_29features_ML.tsv` | Small benchmark-format matrix useful for testing prediction. |
 | `docs/input_formats.md` | Input file requirements and expected formats. |
+| `LICENSE` | MIT license. |
 | `tests/` | Test suite; runs on synthetic data with no external inputs. |
 | `conda/EPFinder_env.yml` | Recommended runtime environment, including bedtools. |
 | `conda/EPFinder_env.lock.yml` | Full frozen export for exact reproduction. |
@@ -181,6 +182,15 @@ and set the `Prom_gene` column type to **Text** rather than double-clicking the
 file. Excel's default conversion silently rewrites gene symbols such as `SEPT2`,
 `MARCH1` and `DEC1` into dates, and the original symbols cannot be recovered
 once the file is saved.
+
+## License
+
+EPFinder is released under the MIT License; see `LICENSE`.
+
+The bundled model and benchmark matrix are derived from public reference data
+with its own terms of use: ENCODE osteoblast RNA-seq (ENCSR000CUF) and CTCF
+(ENCFF643JJS), Roadmap Epigenomics E129 imputed signal tracks, and GENCODE v29
+annotation. Cite those sources alongside EPFinder when you use them.
 
 ## Notes
 
