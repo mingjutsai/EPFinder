@@ -28,6 +28,9 @@ dependencies:
       - pyyaml==6.0.3
       - scikit-learn==1.2.2
       - pycaret==3.2.0
+      # PyCaret 3.2.0 imports joblib.memory._format_load_msg, removed in
+      # joblib 1.4.0, but declares no upper bound of its own.
+      - joblib==1.3.2
       # Estimators embedded in the release model's voting ensemble. Without
       # these, load_model() fails with ModuleNotFoundError.
       - xgboost==2.1.4

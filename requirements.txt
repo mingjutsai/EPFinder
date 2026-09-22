@@ -5,6 +5,11 @@ pyyaml>=6.0
 scikit-learn>=1.2,<1.3
 pycaret==3.2.0
 
+# PyCaret 3.2.0 declares joblib>=1.2.0 with no upper bound, but imports
+# joblib.memory._format_load_msg, which joblib 1.4.0 removed. Without this
+# ceiling, importing pycaret fails with ImportError.
+joblib>=1.2,<1.4
+
 # Estimators embedded in finalize_EPFinder_model.pkl's voting ensemble.
 # PyCaret's base install does not provide them, and load_model() fails with
 # ModuleNotFoundError without them.
