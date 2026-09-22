@@ -16,10 +16,13 @@ the first public pipeline version, from SNP preprocessing to model prediction.
 | `finalize_EPFinder_model.pkl` | Trained EPFinder PyCaret model. |
 | `dataset/gm12878_29features_ML.tsv` | Small benchmark-format matrix useful for testing prediction. |
 | `docs/input_formats.md` | Input file requirements and expected formats. |
+| `conda/EPFinder_env.yml` | Recommended runtime environment, including bedtools. |
+| `conda/EPFinder_env.lock.yml` | Full frozen export for exact reproduction. |
 
 ## Installation
 
-Create the conda environment:
+Create the conda environment. This installs bedtools as well as the Python
+stack, so no separate bedtools install is needed:
 
 ```bash
 conda env create -f conda/EPFinder_env.yml
@@ -33,8 +36,34 @@ notebooks:
 python -m ipykernel install --user --name EPFinder_env --display-name "EPFinder_env"
 ```
 
-The preprocessing workflow also requires `bedtools` in `PATH` or at the path
-set in `preprocessing/config.yaml`.
+### Which environment file to use
+
+| File | Use it when |
+| --- | --- |
+| `conda/EPFinder_env.yml` | Normal use. Pins the model stack and installs bedtools, without PyCaret's optional extras. |
+| `conda/EPFinder_env.lock.yml` | You need byte-level reproduction of the environment the release model was validated in. |
+| `requirements.txt` | You are managing Python yourself. Covers the Python stack only; install bedtools separately. |
+
+`conda/EPFinder_env.yml` is authoritative for normal use. It resolves to roughly
+half the packages of the full export, because EPFinder imports none of PyCaret's
+dashboard, model-explainer, cloud or NLP extras.
+
+Whichever path you take, `xgboost`, `lightgbm` and `catboost` must be present:
+they are the estimators inside the release model's voting ensemble, and
+`load_model()` fails with `ModuleNotFoundError` without them. PyCaret's base
+install does not pull in xgboost or catboost.
+
+### Why Python 3.8 is pinned
+
+`finalize_EPFinder_model.pkl` was serialized under Python 3.8.18 with
+scikit-learn 1.2.2 and PyCaret 3.2.0, and PyCaret warns on any deviation at load
+time. Python 3.8 reached end of life in October 2024, so this pin is a property
+of the released model artifact, not of EPFinder itself — the source in this
+repository runs on current Python. Moving to a supported Python requires
+re-exporting the model and re-validating it against the GM12878 benchmark below.
+
+If bedtools is already installed elsewhere on your system, point at it with
+`bedtools_path` in `preprocessing/config.yaml`.
 
 ## Quick prediction test
 
