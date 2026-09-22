@@ -14,6 +14,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 
 DEFAULT_METADATA_COLUMNS = ("#Class", "ID", "Enh", "Prom", "TX")
 DEFAULT_MODEL = Path(__file__).resolve().parents[1] / "finalize_EPFinder_model"
+DELIMITERS = {"tsv": "\t", "csv": ","}
 
 
 def parse_args() -> argparse.Namespace:
@@ -55,7 +56,29 @@ def parse_args() -> argparse.Namespace:
         default="#Class",
         help="Optional truth label column used to report AUROC/AUPRC if present.",
     )
+    parser.add_argument(
+        "--input-format",
+        choices=("auto", "tsv", "csv"),
+        default="auto",
+        help="Input delimiter. 'auto' uses the file extension and falls back to TSV.",
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=("auto", "tsv", "csv"),
+        default="auto",
+        help=(
+            "Output delimiter. 'auto' uses the file extension and falls back to TSV. "
+            "Use csv for a file that opens directly in Excel."
+        ),
+    )
     return parser.parse_args()
+
+
+def resolve_delimiter(path: Path, explicit: str) -> str:
+    """Pick the delimiter from an explicit flag, else from the file extension."""
+    if explicit != "auto":
+        return DELIMITERS[explicit]
+    return DELIMITERS["csv"] if path.suffix.lower() == ".csv" else DELIMITERS["tsv"]
 
 
 def normalize_model_path(model_path: str) -> str:
@@ -92,7 +115,10 @@ def main() -> None:
     output_path = Path(args.output)
     metadata_columns = [c for c in args.metadata_columns.split(",") if c]
 
-    data = pd.read_csv(input_path, sep="\t")
+    input_sep = resolve_delimiter(input_path, args.input_format)
+    output_sep = resolve_delimiter(output_path, args.output_format)
+
+    data = pd.read_csv(input_path, sep=input_sep)
     missing = [c for c in metadata_columns if c not in data.columns]
     if missing:
         print(f"Metadata columns not present and ignored: {', '.join(missing)}")
@@ -108,9 +134,10 @@ def main() -> None:
     output = data.copy()
     output[args.score_column] = predictions[score_source].values
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output.to_csv(output_path, sep="\t", index=False)
+    output.to_csv(output_path, sep=output_sep, index=False)
 
     print(f"Wrote predictions: {output_path}")
+    print(f"Format: {'csv' if output_sep == ',' else 'tsv'}")
     print(f"Rows: {len(output):,}")
     print(f"Score column: {args.score_column} <- {score_source}")
 

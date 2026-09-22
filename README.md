@@ -1,5 +1,7 @@
 # EPFinder
 
+[![CI](https://github.com/mingjutsai/EPFinder/actions/workflows/ci.yml/badge.svg)](https://github.com/mingjutsai/EPFinder/actions/workflows/ci.yml)
+
 EPFinder is a machine-learning workflow that uses enhancer-promoter regulatory
 features to prioritize target genes for noncoding SNPs. This repository provides
 the first public pipeline version, from SNP preprocessing to model prediction.
@@ -16,10 +18,15 @@ the first public pipeline version, from SNP preprocessing to model prediction.
 | `finalize_EPFinder_model.pkl` | Trained EPFinder PyCaret model. |
 | `dataset/gm12878_29features_ML.tsv` | Small benchmark-format matrix useful for testing prediction. |
 | `docs/input_formats.md` | Input file requirements and expected formats. |
+| `LICENSE` | MIT license. |
+| `tests/` | Test suite; runs on synthetic data with no external inputs. |
+| `conda/EPFinder_env.yml` | Recommended runtime environment, including bedtools. |
+| `conda/EPFinder_env.lock.yml` | Full frozen export for exact reproduction. |
 
 ## Installation
 
-Create the conda environment:
+Create the conda environment. This installs bedtools as well as the Python
+stack, so no separate bedtools install is needed:
 
 ```bash
 conda env create -f conda/EPFinder_env.yml
@@ -33,8 +40,45 @@ notebooks:
 python -m ipykernel install --user --name EPFinder_env --display-name "EPFinder_env"
 ```
 
-The preprocessing workflow also requires `bedtools` in `PATH` or at the path
-set in `preprocessing/config.yaml`.
+### Which environment file to use
+
+| File | Use it when |
+| --- | --- |
+| `conda/EPFinder_env.yml` | Normal use. Pins the model stack and installs bedtools, without PyCaret's optional extras. |
+| `conda/EPFinder_env.lock.yml` | You need byte-level reproduction of the environment the release model was validated in. |
+| `requirements.txt` | You are managing Python yourself. Covers the Python stack only; install bedtools separately. |
+
+`conda/EPFinder_env.yml` is authoritative for normal use. It resolves to roughly
+half the packages of the full export, because EPFinder imports none of PyCaret's
+dashboard, model-explainer, cloud or NLP extras.
+
+Whichever path you take, `xgboost`, `lightgbm` and `catboost` must be present:
+they are the estimators inside the release model's voting ensemble, and
+`load_model()` fails with `ModuleNotFoundError` without them. PyCaret's base
+install does not pull in xgboost or catboost.
+
+### Why Python 3.8 is pinned
+
+`finalize_EPFinder_model.pkl` was serialized under Python 3.8.18 with
+scikit-learn 1.2.2 and PyCaret 3.2.0, and PyCaret warns on any deviation at load
+time. Python 3.8 reached end of life in October 2024, so this pin is a property
+of the released model artifact, not of EPFinder itself — the source in this
+repository runs on current Python. Moving to a supported Python requires
+re-exporting the model and re-validating it against the GM12878 benchmark below.
+
+If bedtools is already installed elsewhere on your system, point at it with
+`bedtools_path` in `preprocessing/config.yaml`.
+
+## Tests
+
+```bash
+pip install pytest
+pytest tests/
+```
+
+The suite builds its own synthetic inputs, so it needs no reference genomics
+data. Tests skip rather than fail when bedtools or the PyCaret stack is absent.
+See `tests/README.md`.
 
 ## Quick prediction test
 
@@ -47,6 +91,14 @@ python scripts/EPFinder_predict.py \
 ```
 
 If the input contains `#Class`, the script also reports AUROC and AUPRC.
+
+To get a spreadsheet-friendly file instead, give the output a `.csv` extension:
+
+```bash
+python scripts/EPFinder_predict.py \
+  --input dataset/gm12878_29features_ML.tsv \
+  --output examples/gm12878_EPFinder_predictions.csv
+```
 
 ## Full preprocessing-to-prediction workflow
 
@@ -100,6 +152,45 @@ matrix. Higher scores indicate stronger model support for the SNP-promoter pair.
 
 For GWAS applications, downstream ranking is typically performed per SNP or per
 GWAS locus, depending on the biological question.
+
+### Output format
+
+The prediction CLI writes TSV by default and switches to CSV when the output
+path ends in `.csv`. Use `--output-format` to set the delimiter explicitly when
+the filename does not carry the extension:
+
+```bash
+python scripts/EPFinder_predict.py \
+  --input  /path/to/output/EPFinder_29features_ML.tsv \
+  --output /path/to/output/EPFinder_predictions.csv
+
+# or, for an output path with a different extension
+python scripts/EPFinder_predict.py \
+  --input  /path/to/output/EPFinder_29features_ML.tsv \
+  --output /path/to/output/EPFinder_predictions.txt \
+  --output-format csv
+```
+
+The input delimiter is detected the same way, and `--input-format` overrides it.
+Preprocessing itself always writes TSV, because the workflow uses commas
+internally to build the enhancer/promoter merge keys.
+
+### Opening results in Excel
+
+CSV output opens directly in Excel, but import it with **Data > From Text/CSV**
+and set the `Prom_gene` column type to **Text** rather than double-clicking the
+file. Excel's default conversion silently rewrites gene symbols such as `SEPT2`,
+`MARCH1` and `DEC1` into dates, and the original symbols cannot be recovered
+once the file is saved.
+
+## License
+
+EPFinder is released under the MIT License; see `LICENSE`.
+
+The bundled model and benchmark matrix are derived from public reference data
+with its own terms of use: ENCODE osteoblast RNA-seq (ENCSR000CUF) and CTCF
+(ENCFF643JJS), Roadmap Epigenomics E129 imputed signal tracks, and GENCODE v29
+annotation. Cite those sources alongside EPFinder when you use them.
 
 ## Notes
 

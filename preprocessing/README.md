@@ -86,13 +86,20 @@ The workflow runs a preflight validator before Step 1. All input files are tab-s
 
 | Input | Required format |
 |---|---|
-| `input_gwas` | At least two columns: chromosome and 1-based SNP position. Additional columns are preserved. Chromosomes must correspond to the Hi-C filenames. |
+| `input_gwas` | At least two columns: chromosome and 1-based SNP position, with the SNP ID in column 3 when present. Additional columns are allowed, but every data row must have the same width, because later steps locate the Hi-C and TSS columns by offset from it. |
 | Hi-C files in `hic_folder` | One file per chromosome named `{hic_prefix}chrN` (for example, `MB.hic.KR.chr1`). Each data row has exactly three columns: `bin_start`, `bin_end`, `contact`; bins are non-negative integers and contact is numeric or `nan`. |
-| `tss_file` | Sorted BED-like rows with at least five columns: chromosome, start, end, transcript ID, gene symbol. Coordinates are non-negative, and transcript IDs must be `ENST...`; version suffixes are allowed. Extra columns are permitted. |
+| `tss_file` | Sorted BED-like rows whose first five columns are chromosome, start, end, transcript ID, gene symbol. Coordinates are non-negative, and transcript IDs must be `ENST...`; version suffixes are allowed. Extra columns after the fifth are permitted and ignored. |
 | `tx_expression` | Transcript ID in column 1 and expression value in the final column. Both a two-column matrix (`ENST`, value) and an RSEM-style matrix (`transcript_id`, `gene_id`, sample value) are supported. |
 | `gene_list` | At least six columns, with gene symbol in column 5 and Ensembl gene ID in column 6 (`ENSG...`, including version suffixes if present). |
 | `gene_expression` | Gene ID in column 1 and expression value in the final column. Both a two-column matrix and an RSEM-style matrix (`gene_id`, `transcript_id(s)`, sample value) are supported. |
 | `feature_list` | Two columns per row: unique feature name and path to a signal BED/bedGraph file. Each signal row must contain chromosome, start, end, and numeric signal value. |
+
+Chromosome naming is detected per file rather than assumed: the SNP file, the
+TSS annotation and the chromatin signal files may each use `chr1` or `1`, and
+the workflow converts between them. All files in `feature_list` must agree with
+one another, because step 7 writes a single set of enhancer and promoter regions
+that every signal file is scored against. Preflight prints the detected
+conventions and rejects a `feature_list` whose files disagree.
 
 Ensembl release suffixes are normalized before mapping (`ENSG00000123456.11` and `ENSG00000123456` are treated as the same gene; the same applies to `ENST` IDs). The TSS and expression files must share stable transcript IDs, and the gene list and gene-expression matrix must share stable gene IDs. Missing expression entries are assigned `0` and summarized as warnings; a complete lack of overlap is a preflight error.
 
@@ -169,6 +176,8 @@ Total: 1 (Hi-C) + 2 (expression) + 13 × 2 (enhancer + promoter marks) = **29 fe
 
 ## Notes
 
+- Step 2 sorts with `LC_ALL=C` so that its ordering matches `bedtools sort`,
+  which step 3 applies to the TSS file before intersecting with `-sorted`.
 - The pipeline assumes hg38 throughout. Hi-C files, bigwig/bedGraph signals, TSS annotations, and GWAS coordinates must all be in hg38.
 - Intermediate files in `tmp/` are not automatically deleted and can be used for debugging individual steps.
 - Step 1 is the most compute-intensive. Adjust `step1_nproc` to match available CPU cores.
