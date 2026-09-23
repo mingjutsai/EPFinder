@@ -16,7 +16,7 @@ the first public pipeline version, from SNP preprocessing to model prediction.
 | `scripts/EPFinder_predict.py` | Command-line EPFinder prediction using the trained PyCaret model. |
 | `scripts/run_EPFinder_pipeline.py` | Convenience wrapper to run preprocessing and prediction together. |
 | `finalize_EPFinder_model.pkl` | Trained EPFinder PyCaret model. |
-| `dataset/gm12878_29features_ML.tsv` | Small benchmark-format matrix useful for testing prediction. |
+| `dataset/GM12878_features_all_transcripts.tsv` | GM12878 validation matrix: 89 CRISPR-tested pairs, one row per transcript. |
 | `docs/input_formats.md` | Input file requirements and expected formats. |
 | `LICENSE` | MIT license. |
 | `tests/` | Test suite; runs on synthetic data with no external inputs. |
@@ -68,7 +68,7 @@ support.
 
 `finalize_EPFinder_model.pkl` was saved under Python 3.8.18 and is shipped
 unchanged. Loading it on Python 3.11 gives bit-identical scores on the GM12878
-benchmark, the K562 training set and 275,516 eBMD enhancer-promoter pairs.
+and K562 CRISPR pairs and on 275,516 eBMD enhancer-promoter pairs.
 PyCaret prints a version-mismatch warning at load time; it is expected. Moving
 past Python 3.11 requires re-training the model on a newer scikit-learn.
 
@@ -88,21 +88,34 @@ See `tests/README.md`.
 
 ## Quick prediction test
 
-Run EPFinder prediction on the included benchmark-format matrix:
+Run EPFinder prediction on the included GM12878 validation matrix:
 
 ```bash
 python scripts/EPFinder_predict.py \
-  --input dataset/gm12878_29features_ML.tsv \
+  --input dataset/GM12878_features_all_transcripts.tsv \
   --output examples/gm12878_EPFinder_predictions.tsv
 ```
 
-If the input contains `#Class`, the script also reports AUROC and AUPRC.
+The matrix holds 89 enhancer-gene pairs tested by CRISPR in GM12878 (Nasser et
+al. 2021; 32 positive). As at GWAS loci, every protein-coding transcript of the
+gene has its own row (518 rows). When the input contains `#Class`, the script
+reports AUROC and AUPRC per pair, scoring each pair by its best transcript:
+
+```text
+Pairs: 89 (each scored by its best row)
+AUROC: 0.9413
+AUPRC: 0.9389
+```
+
+Missing `HiC_Contact` values are scored as 0, as in training and in the
+preprocessing workflow. The matrix is built from public data by
+`scripts/build_features.py` in the EPFinder_training repository.
 
 To get a spreadsheet-friendly file instead, give the output a `.csv` extension:
 
 ```bash
 python scripts/EPFinder_predict.py \
-  --input dataset/gm12878_29features_ML.tsv \
+  --input dataset/GM12878_features_all_transcripts.tsv \
   --output examples/gm12878_EPFinder_predictions.csv
 ```
 

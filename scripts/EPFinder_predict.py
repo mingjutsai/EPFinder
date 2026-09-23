@@ -57,6 +57,14 @@ def parse_args() -> argparse.Namespace:
         help="Optional truth label column used to report AUROC/AUPRC if present.",
     )
     parser.add_argument(
+        "--pair-column",
+        default="ID",
+        help=(
+            "Column identifying an enhancer-gene pair. When a pair has several rows "
+            "(one per transcript), AUROC/AUPRC use its highest score."
+        ),
+    )
+    parser.add_argument(
         "--input-format",
         choices=("auto", "tsv", "csv"),
         default="auto",
@@ -127,8 +135,14 @@ def main() -> None:
     if not feature_columns:
         raise ValueError("No feature columns remain after metadata-column removal.")
 
+    features = data[feature_columns].copy()
+    if "HiC_Contact" in features and features["HiC_Contact"].isna().any():
+        # Training and the preprocessing workflow both treat a missing contact as 0.
+        print(f"HiC_Contact missing in {features['HiC_Contact'].isna().sum():,} rows; scored as 0")
+        features["HiC_Contact"] = features["HiC_Contact"].fillna(0)
+
     model = load_model(normalize_model_path(args.model))
-    predictions = predict_model(model, raw_score=True, data=data[feature_columns])
+    predictions = predict_model(model, raw_score=True, data=features)
     score_source = select_score_column(predictions.columns)
 
     output = data.copy()
@@ -142,8 +156,15 @@ def main() -> None:
     print(f"Score column: {args.score_column} <- {score_source}")
 
     if args.label_column in output.columns:
-        y_true = output[args.label_column]
-        y_score = output[args.score_column]
+        scored = output[[args.label_column, args.score_column]]
+        if args.pair_column in output.columns and output[args.pair_column].duplicated().any():
+            # One row per transcript: a pair is scored by its best transcript,
+            # as genes are ranked at GWAS loci.
+            scored = output.groupby(args.pair_column, sort=False).agg(
+                {args.label_column: "first", args.score_column: "max"})
+            print(f"Pairs: {len(scored):,} (each scored by its best row)")
+        y_true = scored[args.label_column]
+        y_score = scored[args.score_column]
         print(f"AUROC: {roc_auc_score(y_true, y_score):.4f}")
         print(f"AUPRC: {average_precision_score(y_true, y_score):.4f}")
 
