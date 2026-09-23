@@ -13,7 +13,7 @@
 # release that scikit-learn 1.2.2 and PyCaret 3.2.0 support.
 #
 # The model was saved under Python 3.8.18. Loading it here gives bit-identical
-# scores on the GM12878 benchmark, the K562 training set and 275,516 eBMD
+# scores on the GM12878 and K562 CRISPR pairs and on 275,516 eBMD
 # enhancer-promoter pairs; PyCaret's version-mismatch warning at load time is
 # expected. Going beyond Python 3.11 requires re-training the model.
 #

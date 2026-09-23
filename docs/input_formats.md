@@ -96,3 +96,9 @@ The final preprocessing output contains metadata plus 29 model features:
 The prediction CLI drops standard metadata columns (`#Class`, `ID`, `Enh`,
 `Prom`, `TX`) when present and applies the trained PyCaret model to the
 remaining feature columns.
+
+Missing `HiC_Contact` values are scored as 0, matching training and the
+preprocessing workflow. When the input has `#Class`, AUROC and AUPRC are
+reported per enhancer-gene pair: rows sharing an `ID` (one per transcript) are
+scored by their highest EPFinder score. `--pair-column` names a different ID
+column.
